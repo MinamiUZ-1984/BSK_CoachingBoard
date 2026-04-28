@@ -3,20 +3,13 @@ import streamlit as st
 # 1. ページ設定
 st.set_page_config(page_title="バスケ作戦盤 Pro", layout="centered")
 
-# --- iPhone 15 画面使い切りCSS魔法（余白を極限までカット） ---
+# --- iPhone 15 最適化CSS ---
 st.markdown("""
     <style>
-    /* メインコンテンツの余白をさらに削る */
     .main .block-container {
         padding-left: 0.2rem !important;
         padding-right: 0.2rem !important;
         padding-top: 0.5rem !important;
-        max-width: 100%;
-    }
-    h1 {
-        font-size: 1.6rem !important;
-        text-align: center;
-        margin-bottom: 0.5rem;
     }
     iframe {
         width: 100% !important;
@@ -27,12 +20,31 @@ st.markdown("""
 
 st.title("🏀 バスケ作戦盤 Pro")
 
-# --- 2. 復活した黄金レイアウト + ドラッグ機能の大改造 ---
-def draw_perfect_interactive_court():
+# --- 2. ズーム・表示設定のUI ---
+st.write("### 🔍 表示設定")
+col_z1, col_z2 = st.columns([2, 3])
+with col_z1:
+    view_mode = st.radio("表示範囲", ["フル", "上半面", "下半面"], horizontal=True)
+with col_z2:
+    zoom_val = st.slider("ズーム倍率", 1.0, 2.0, 1.2) # 初期値を少し大きめに
+
+# --- 3. 完璧なコート + ドラッグ + ズーム機能 ---
+def draw_zoomable_court(view, zoom):
     c_orange = "#FF8C00"
     c_white = "white"
     
-    # 初期の配置（広く使いやすくなった黄金比）
+    # 表示範囲に応じたviewBoxの切り替え (x, y, width, height)
+    if view == "上半面":
+        v_box = "0 0 350 260"
+        svg_h = 260 * zoom
+    elif view == "下半面":
+        v_box = "0 260 350 260"
+        svg_h = 260 * zoom
+    else:
+        v_box = "0 0 350 520"
+        svg_h = 520 * zoom
+
+    # 選手配置（黄金レイアウトの座標）
     players = [
         {"id": "R1", "x": 175, "y": 150, "color": "red"},
         {"id": "R2", "x": 60, "y": 200, "color": "red"},
@@ -47,32 +59,27 @@ def draw_perfect_interactive_court():
         {"id": "Ball", "x": 175, "y": 260, "color": "yellow"}
     ]
 
-    # --- 修正ポイント1：コート全体のサイズアップ ---
-    # viewBox="0 0 350 520" は変えず、max-widthを380pxまで上げることでiPhone 15の横幅をほぼ使い切ります。
     svg_html = f"""
-    <svg id="court" width="100%" height="auto" viewBox="0 0 350 520" xmlns="http://www.w3.org/2000/svg" 
-         style="max-width: 380px; display: block; margin: 0 auto; touch-action: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+    <svg id="court" width="100%" viewBox="{v_box}" xmlns="http://www.w3.org/2000/svg" 
+         style="max-width: {350 * zoom}px; display: block; margin: 0 auto; touch-action: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
         
         <rect width="350" height="520" fill="{c_orange}" />
         <g fill="none" stroke="{c_white}" stroke-width="3">
             <rect x="10" y="10" width="330" height="500" />
             <line x1="10" y1="260" x2="340" y2="260" />
             <circle cx="175" cy="260" r="40" />
-            
-            <rect x="135" y="10" width="80" height="110" /> <circle cx="175" cy="120" r="40" /> <line x1="30" y1="10" x2="30" y2="25" />
-            <line x1="320" y1="10" x2="320" y2="25" />
-            <path d="M 30 25 A 145 145 0 0 0 320 25" />
-            
+            <rect x="135" y="10" width="80" height="110" />
+            <circle cx="175" cy="120" r="40" />
+            <path d="M 30 25 A 145 145 0 0 0 320 25" transform="translate(0, 45)" />
+            <line x1="30" y1="10" x2="30" y2="25" /><line x1="320" y1="10" x2="320" y2="25" />
             <rect x="135" y="410" width="80" height="110" />
             <circle cx="175" cy="400" r="40" />
-            <line x1="30" y1="510" x2="30" y2="495" />
-            <line x1="320" y1="510" x2="320" y2="495" />
-            <path d="M 30 495 A 145 145 0 0 1 320 495" />
+            <path d="M 30 495 A 145 145 0 0 1 320 495" transform="translate(0, -45)" />
+            <line x1="30" y1="510" x2="30" y2="495" /><line x1="320" y1="510" x2="320" y2="495" />
         </g>
         
-        <line x1="150" y1="35" x2="200" y2="35" stroke="black" stroke-width="4" />
+        <g stroke-width="4" stroke="black"><line x1="150" y1="35" x2="200" y2="35" /><line x1="150" y1="485" x2="200" y2="485" /></g>
         <circle cx="175" cy="50" r="12" stroke="red" stroke-width="3" fill="none" />
-        <line x1="150" y1="485" x2="200" y2="485" stroke="black" stroke-width="4" />
         <circle cx="175" cy="470" r="12" stroke="red" stroke-width="3" fill="none" />
 
         { "".join([f'''
@@ -85,7 +92,6 @@ def draw_perfect_interactive_court():
         ''' for p in players]) }
 
         <script>
-            // （前回のJavaScriptドラッグ処理をそのまま活用）
             const svg = document.getElementById('court');
             let selectedElement = null;
             let offset = {{ x: 0, y: 0 }};
@@ -95,10 +101,14 @@ def draw_perfect_interactive_court():
             svg.addEventListener('touchstart', startDrag, {{passive: false}});
             svg.addEventListener('touchmove', drag, {{passive: false}});
             svg.addEventListener('touchend', endDrag);
+
             function getMousePosition(evt) {{
                 const CTM = svg.getScreenCTM();
                 if (evt.touches) {{ evt = evt.touches[0]; }}
-                return {{ x: (evt.clientX - CTM.e) / CTM.a, y: (evt.clientY - CTM.f) / CTM.d }};
+                return {{
+                    x: (evt.clientX - CTM.e) / CTM.a,
+                    y: (evt.clientY - CTM.f) / CTM.d
+                }};
             }}
             function startDrag(evt) {{
                 const target = evt.target.closest('.draggable');
@@ -106,11 +116,9 @@ def draw_perfect_interactive_court():
                     selectedElement = target;
                     const pos = getMousePosition(evt);
                     const transforms = selectedElement.transform.baseVal;
-                    if (transforms.length === 0 || transforms.getItem(0).type !== SVGTransform.SVG_TRANSFORM_TRANSLATE) {{
-                        selectedElement.setAttribute('transform', 'translate(0,0)');
-                    }}
                     const translate = transforms.getItem(0);
-                    offset.x = pos.x - translate.matrix.e; offset.y = pos.y - translate.matrix.f;
+                    offset.x = pos.x - translate.matrix.e;
+                    offset.y = pos.y - translate.matrix.f;
                     if (evt.type === 'touchstart') evt.preventDefault();
                 }}
             }}
@@ -125,22 +133,19 @@ def draw_perfect_interactive_court():
         </script>
     </svg>
     """
-    return svg_html
+    return svg_html, svg_h
 
-# --- 3. 画面表示 ---
-st.write("選手やボールを指で動かしてください。")
+# --- 4. 画面表示 ---
+svg_code, current_height = draw_zoomable_court(view_mode, zoom_val)
 
-# htmlコンポーネントの中で中央寄せ。高さもiPhoneに合わせて微調整。
 st.components.v1.html(
     f"""
-    <div style="width: 100%; display: flex; justify-content: center; background-color: transparent;">
-        {draw_perfect_interactive_court()}
+    <div style="width: 100%; display: flex; justify-content: center; overflow: hidden;">
+        {svg_code}
     </div>
     """,
-    height=545
+    height=int(current_height) + 50
 )
 
 if st.button("配置をリセット"):
     st.rerun()
-
-st.caption("※iPhone 15 完全対応版。操作性とレイアウトを修正しました。")
