@@ -6,8 +6,8 @@ st.title("🏀 バスケ作戦盤 Pro")
 # --- 1. 選手とボールの位置記憶 ---
 if "positions" not in st.session_state:
     st.session_state.positions = {
-        "R1": [175, 100], "R2": [60, 150], "R3": [290, 150], "R4": [100, 220], "R5": [250, 220],
-        "B1": [175, 420], "B2": [60, 370], "B3": [290, 370], "B4": [100, 300], "B5": [250, 300],
+        "R1": [175, 150], "R2": [60, 200], "R3": [290, 200], "R4": [100, 280], "R5": [250, 280],
+        "B1": [175, 370], "B2": [60, 320], "B3": [290, 320], "B4": [100, 240], "B5": [250, 240],
         "Ball": [175, 260]
     }
 
@@ -33,7 +33,7 @@ def draw_perfect_court():
     svg += f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{c_orange}" />'
     style = f'fill="none" stroke="{c_white}" stroke-width="3"'
     
-    # センターライン・外枠・センターサークル
+    # 外枠・センターライン・センターサークル
     svg += f'<rect x="10" y="10" width="330" height="500" {style} />'
     svg += f'<line x1="10" y1="{CENTER_Y}" x2="340" y2="{CENTER_Y}" {style} />'
     svg += f'<circle cx="{CENTER_X}" cy="{CENTER_Y}" r="40" {style} />'
@@ -43,28 +43,29 @@ def draw_perfect_court():
         direction = 1 if is_top else -1
         
         h_svg = ""
-        # ペイントエリア (高さを110に固定)
+        # ペイントエリア (y=120まで)
         p_y = offset_y if is_top else offset_y - 110
         h_svg += f'<rect x="135" y="{p_y}" width="80" height="110" {style} />'
         
-        # フリースローサークル
+        # フリースローサークル (中心 y=120)
         fs_cy = offset_y + (110 * direction)
         h_svg += f'<circle cx="{CENTER_X}" cy="{fs_cy}" r="40" {style} />'
         
-        # --- 3Pラインの位置調整 ---
-        # センターサークルに被らないよう、直線の長さを「90」から「50」に短縮
-        line_len = 50
+        # --- 3Pラインをさらにゴール側へシフト ---
+        # 直線部分を「50」から「15」まで短縮
+        line_len = 15
         line_end_y = offset_y + (line_len * direction)
         
-        # 垂直な直線部分
+        # 垂直な直線部分 (コーナー)
         h_svg += f'<line x1="30" y1="{offset_y}" x2="30" y2="{line_end_y}" {style} />'
         h_svg += f'<line x1="320" y1="{offset_y}" x2="320" y2="{line_end_y}" {style} />'
         
-        # 円弧部分 (半径145を維持しつつ、接続点を浅くしたことで全体がゴール側へシフト)
+        # 円弧部分 (半径145)
+        # 頂点が y=170 (上) / y=350 (下) になり、FSサークル(y=150/370)にかなり近づきます
         sweep = 0 if is_top else 1
         h_svg += f'<path d="M 30 {line_end_y} A 145 145 0 0 {sweep} 320 {line_end_y}" {style} />'
         
-        # ゴール
+        # ゴール (エンドラインから40の位置)
         g_y = offset_y + (40 * direction)
         board_y = offset_y + (25 * direction)
         h_svg += f'<line x1="150" y1="{board_y}" x2="200" y2="{board_y}" stroke="black" stroke-width="4" />'
@@ -72,10 +73,11 @@ def draw_perfect_court():
         
         return h_svg
 
+    # 上下を描画
     svg += create_half_court(is_top=True)
     svg += create_half_court(is_top=False)
 
-    # 選手とボール
+    # 選手とボールの描画
     for name, p in pos.items():
         if name.startswith("R"): color, label_c = "red", "white"
         elif name.startswith("B"): color, label_c = "blue", "white"
