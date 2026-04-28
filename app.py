@@ -3,62 +3,52 @@ import streamlit as st
 # 1. ページ設定
 st.set_page_config(page_title="バスケ作戦盤 Pro", layout="centered")
 
-# iPhone 15 画面使い切りCSS
+# 余白を限界まで削り、常に画面を広く使うCSS
 st.markdown("""
     <style>
     .main .block-container {
         padding-left: 0.1rem !important;
         padding-right: 0.1rem !important;
         padding-top: 0.5rem !important;
+        max-width: 100% !important;
     }
     iframe { width: 100% !important; border: none; }
+    h1 { font-size: 1.5rem !important; text-align: center; margin-bottom: 0.5rem; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🏀 バスケ作戦盤 Pro")
 
-# --- 2. 選手10人＋ボールの初期配置（ハーフコート内に10人配置） ---
+# --- 2. 選手・ボールの初期配置（ハーフコート10人体制） ---
 if "positions" not in st.session_state:
     st.session_state.positions = {
-        # オフェンス（赤）：外側に配置（コーナー、45度、トップ）
-        "R1": [175, 185], # トップ
-        "R2": [70, 140],  # 左45度
-        "R3": [280, 140], # 右45度
-        "R4": [35, 50],   # 左コーナー
-        "R5": [315, 50],  # 右コーナー
-        
-        # ディフェンス（青）：赤に対応して少し内側に配置
-        "B1": [175, 150], # R1をガード
-        "B2": [105, 115], # R2をガード
-        "B3": [245, 115], # R3をガード
-        "B4": [55, 65],   # R4をガード
-        "B5": [295, 65],  # R5をガード
-        
-        "Ball": [175, 210] # ボール
+        "R1": [175, 185], "R2": [70, 140], "R3": [280, 140], "R4": [35, 50], "R5": [315, 50],
+        "B1": [175, 150], "B2": [105, 115], "B3": [245, 115], "B4": [55, 65], "B5": [295, 65],
+        "Ball": [175, 210]
     }
 
-# --- 3. 操作UI ---
-col_u1, col_u2 = st.columns([2, 1])
-with col_u1:
-    view_range = st.radio("表示範囲", ["フル", "上半面", "下半面"], horizontal=True)
-with col_u2:
-    is_expand = st.toggle("拡大モード", value=True)
+# --- 3. 表示範囲の切り替えのみ残す ---
+view_range = st.radio("表示範囲", ["フル", "上半面", "下半面"], horizontal=True)
 
-# --- 4. 黄金レイアウトSVG描画 ---
-def draw_interactive_court(view, expand):
+# --- 4. 黄金レイアウトSVG描画（常に最大表示） ---
+def draw_max_court(view):
     c_orange = "#FF8C00"
     c_white = "white"
     
-    max_w = "100%" if expand else "320px"
+    # 常に最大幅。iPhone 15の横幅（約390px）を考慮し、max-widthを少し余裕を持って設定
+    max_w_css = "390px" 
     
-    # 表示範囲設定
-    if view == "上半面": v_box, h_val = "0 0 350 260", 400 if expand else 300
-    elif view == "下半面": v_box, h_val = "0 260 350 260", 400 if expand else 300
-    else: v_box, h_val = "0 0 350 520", 600 if expand else 450
+    # 表示範囲に応じた設計図（viewBox）と高さの設定
+    if view == "上半面": 
+        v_box, h_val = "0 0 350 260", 410 # スマホでタップしやすい高さ
+    elif view == "下半面": 
+        v_box, h_val = "0 260 350 260", 410
+    else: 
+        v_box, h_val = "0 0 350 520", 610
 
     svg_html = f"""
     <svg id="court-svg" width="100%" viewBox="{v_box}" xmlns="http://www.w3.org/2000/svg" 
-         style="max-width: {max_w}; display: block; margin: 0 auto; touch-action: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+         style="max-width: {max_w_css}; display: block; margin: 0 auto; touch-action: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
         <rect width="350" height="520" fill="{c_orange}" />
         <g fill="none" stroke="{c_white}" stroke-width="3">
             <rect x="10" y="10" width="330" height="500" />
@@ -124,7 +114,7 @@ def draw_interactive_court(view, expand):
     return svg_html, h_val
 
 # --- 5. 表示 ---
-svg_code, h_val = draw_interactive_court(view_range, is_expand)
+svg_code, h_val = draw_max_court(view_range)
 
 st.components.v1.html(
     f'<div style="width: 100%; display: flex; justify-content: center;">{svg_code}</div>',
