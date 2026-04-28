@@ -8,7 +8,6 @@ st.set_page_config(page_title="バスケ作戦盤", layout="centered")
 st.title("🏀 バスケ作戦盤")
 
 # --- コート画像を自動生成する関数 ---
-@st.cache_data
 def create_court_image():
     # スマホ画面に合わせた縦長のキャンバスサイズ
     width, height = 400, 600
