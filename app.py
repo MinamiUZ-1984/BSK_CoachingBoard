@@ -3,13 +3,20 @@ import streamlit as st
 # 1. ページ設定
 st.set_page_config(page_title="バスケ作戦盤 Pro", layout="centered")
 
-# --- iPhone最適化CSS ---
+# --- iPhone 15 画面使い切りCSS魔法（余白を極限までカット） ---
 st.markdown("""
     <style>
+    /* メインコンテンツの余白をさらに削る */
     .main .block-container {
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-        padding-top: 1rem !important;
+        padding-left: 0.2rem !important;
+        padding-right: 0.2rem !important;
+        padding-top: 0.5rem !important;
+        max-width: 100%;
+    }
+    h1 {
+        font-size: 1.6rem !important;
+        text-align: center;
+        margin-bottom: 0.5rem;
     }
     iframe {
         width: 100% !important;
@@ -20,13 +27,12 @@ st.markdown("""
 
 st.title("🏀 バスケ作戦盤 Pro")
 
-# --- 2. 完璧なコート + ドラッグ機能のJavaScript ---
-def draw_interactive_court():
-    # 線の色とコート色
+# --- 2. 復活した黄金レイアウト + ドラッグ機能の大改造 ---
+def draw_perfect_interactive_court():
     c_orange = "#FF8C00"
     c_white = "white"
     
-    # 初期の選手配置（あなたの「完璧なレイアウト」を継承）
+    # 初期の配置（広く使いやすくなった黄金比）
     players = [
         {"id": "R1", "x": 175, "y": 150, "color": "red"},
         {"id": "R2", "x": 60, "y": 200, "color": "red"},
@@ -41,10 +47,11 @@ def draw_interactive_court():
         {"id": "Ball", "x": 175, "y": 260, "color": "yellow"}
     ]
 
-    # SVG本体とドラッグを制御するJavaScript
+    # --- 修正ポイント1：コート全体のサイズアップ ---
+    # viewBox="0 0 350 520" は変えず、max-widthを380pxまで上げることでiPhone 15の横幅をほぼ使い切ります。
     svg_html = f"""
     <svg id="court" width="100%" height="auto" viewBox="0 0 350 520" xmlns="http://www.w3.org/2000/svg" 
-         style="max-width: 350px; display: block; margin: 0 auto; touch-action: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+         style="max-width: 380px; display: block; margin: 0 auto; touch-action: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
         
         <rect width="350" height="520" fill="{c_orange}" />
         <g fill="none" stroke="{c_white}" stroke-width="3">
@@ -52,17 +59,15 @@ def draw_interactive_court():
             <line x1="10" y1="260" x2="340" y2="260" />
             <circle cx="175" cy="260" r="40" />
             
-            <rect x="135" y="10" width="80" height="110" />
-            <circle cx="175" cy="120" r="40" />
-            <path d="M 30 25 A 145 145 0 0 0 320 25" transform="translate(0, 45)" />
-            <line x1="30" y1="10" x2="30" y2="70" />
-            <line x1="320" y1="10" x2="320" y2="70" />
+            <rect x="135" y="10" width="80" height="110" /> <circle cx="175" cy="120" r="40" /> <line x1="30" y1="10" x2="30" y2="25" />
+            <line x1="320" y1="10" x2="320" y2="25" />
+            <path d="M 30 25 A 145 145 0 0 0 320 25" />
             
             <rect x="135" y="410" width="80" height="110" />
             <circle cx="175" cy="400" r="40" />
-            <path d="M 30 495 A 145 145 0 0 1 320 495" transform="translate(0, -45)" />
-            <line x1="30" y1="510" x2="30" y2="450" />
-            <line x1="320" y1="510" x2="320" y2="450" />
+            <line x1="30" y1="510" x2="30" y2="495" />
+            <line x1="320" y1="510" x2="320" y2="495" />
+            <path d="M 30 495 A 145 145 0 0 1 320 495" />
         </g>
         
         <line x1="150" y1="35" x2="200" y2="35" stroke="black" stroke-width="4" />
@@ -72,34 +77,29 @@ def draw_interactive_court():
 
         { "".join([f'''
         <g class="draggable" id="{p['id']}" transform="translate({p['x']},{p['y']})" style="cursor: move;">
-            <circle r="{"8" if p['id']=="Ball" else "14"}" fill="{p['color']}" stroke="{"black" if p['id']=="Ball" else "white"}" stroke-width="2" />
-            <text dy=".3em" font-size="10" text-anchor="middle" fill="{"black" if p['id']=="Ball" else "white"}" font-family="Arial" font-weight="bold" pointer-events="none">
+            <circle r="{"10" if p['id']=="Ball" else "17"}" fill="{p['color']}" stroke="{"black" if p['id']=="Ball" else "white"}" stroke-width="2" />
+            <text dy=".3em" font-size="11" text-anchor="middle" fill="{"black" if p['id']=="Ball" else "white"}" font-family="Arial" font-weight="bold" pointer-events="none">
                 {"B" if p['id']=="Ball" else p['id']}
             </text>
         </g>
         ''' for p in players]) }
 
         <script>
+            // （前回のJavaScriptドラッグ処理をそのまま活用）
             const svg = document.getElementById('court');
             let selectedElement = null;
             let offset = {{ x: 0, y: 0 }};
-
             svg.addEventListener('mousedown', startDrag);
             svg.addEventListener('mousemove', drag);
             svg.addEventListener('mouseup', endDrag);
             svg.addEventListener('touchstart', startDrag, {{passive: false}});
             svg.addEventListener('touchmove', drag, {{passive: false}});
             svg.addEventListener('touchend', endDrag);
-
             function getMousePosition(evt) {{
                 const CTM = svg.getScreenCTM();
                 if (evt.touches) {{ evt = evt.touches[0]; }}
-                return {{
-                    x: (evt.clientX - CTM.e) / CTM.a,
-                    y: (evt.clientY - CTM.f) / CTM.d
-                }};
+                return {{ x: (evt.clientX - CTM.e) / CTM.a, y: (evt.clientY - CTM.f) / CTM.d }};
             }}
-
             function startDrag(evt) {{
                 const target = evt.target.closest('.draggable');
                 if (target) {{
@@ -110,12 +110,10 @@ def draw_interactive_court():
                         selectedElement.setAttribute('transform', 'translate(0,0)');
                     }}
                     const translate = transforms.getItem(0);
-                    offset.x = pos.x - translate.matrix.e;
-                    offset.y = pos.y - translate.matrix.f;
+                    offset.x = pos.x - translate.matrix.e; offset.y = pos.y - translate.matrix.f;
                     if (evt.type === 'touchstart') evt.preventDefault();
                 }}
             }}
-
             function drag(evt) {{
                 if (selectedElement) {{
                     const pos = getMousePosition(evt);
@@ -123,29 +121,26 @@ def draw_interactive_court():
                     if (evt.type === 'touchmove') evt.preventDefault();
                 }}
             }}
-
-            function endDrag(evt) {{
-                selectedElement = null;
-            }}
+            function endDrag(evt) {{ selectedElement = null; }}
         </script>
     </svg>
     """
     return svg_html
 
 # --- 3. 画面表示 ---
-st.write("選手やボールを指で触って動かしてみてください。")
+st.write("選手やボールを指で動かしてください。")
 
+# htmlコンポーネントの中で中央寄せ。高さもiPhoneに合わせて微調整。
 st.components.v1.html(
     f"""
-    <div style="width: 100%; display: flex; justify-content: center;">
-        {draw_interactive_court()}
+    <div style="width: 100%; display: flex; justify-content: center; background-color: transparent;">
+        {draw_perfect_interactive_court()}
     </div>
     """,
-    height=550
+    height=545
 )
 
-st.write("---")
 if st.button("配置をリセット"):
     st.rerun()
 
-st.caption("※iPhone 15のタッチ操作に対応しています。")
+st.caption("※iPhone 15 完全対応版。操作性とレイアウトを修正しました。")
