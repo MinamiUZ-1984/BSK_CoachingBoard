@@ -94,7 +94,7 @@ canvas_result = st_canvas(
     height=520,
     width=350,
     drawing_mode=drawing_mode,
-    key="canvas_pro",
+    key="canvas_pro_v2",
 )
 
 st.caption("※「動かす」モードで選手やボールをドラッグ、「書く」モードで線を引けます。")
