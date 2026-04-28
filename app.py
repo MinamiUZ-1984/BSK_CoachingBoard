@@ -6,8 +6,8 @@ st.title("🏀 バスケ作戦盤 Pro")
 # --- 1. 選手とボールの位置記憶 ---
 if "positions" not in st.session_state:
     st.session_state.positions = {
-        "R1": [175, 120], "R2": [50, 180], "R3": [300, 180], "R4": [100, 240], "R5": [250, 240],
-        "B1": [175, 400], "B2": [50, 340], "B3": [300, 340], "B4": [100, 280], "B5": [250, 280],
+        "R1": [175, 150], "R2": [50, 200], "R3": [300, 200], "R4": [100, 260], "R5": [250, 260],
+        "B1": [175, 370], "B2": [50, 320], "B3": [300, 320], "B4": [100, 260], "B5": [250, 260],
         "Ball": [175, 260]
     }
 
@@ -20,7 +20,7 @@ with col1:
 with col2:
     st.session_state.positions[target][1] = st.slider("前後 (Y)", 0, 520, st.session_state.positions[target][1])
 
-# --- 3. コートを描画するSVG関数 (サイズ調整版) ---
+# --- 3. コートを描画するSVG関数 (レイアウト修正版) ---
 def draw_perfect_court():
     pos = st.session_state.positions
     c_orange = "#FF8C00"
@@ -33,28 +33,26 @@ def draw_perfect_court():
     # 基本ライン
     svg += f'<rect x="10" y="10" width="330" height="500" {style} />'
     svg += f'<line x1="10" y1="260" x2="340" y2="260" {style} />'
-    
-    # センターサークル (半径40)
     svg += f'<circle cx="175" cy="260" r="40" {style} />'
 
     # --- 上半分のライン ---
-    # ペイントエリア: サークル直径(80)に合わせて幅を調整 (175を中心に左右40ずつ)
-    svg += f'<rect x="135" y="10" width="80" height="150" {style} />'
-    # フリースローサークル: センターサークルと同じ半径40
-    svg += f'<circle cx="175" cy="160" r="40" {style} />'
-    # 3Pライン
-    svg += f'<path d="M 30 10 A 150 150 0 0 0 320 10" {style} />'
+    # ペイントエリア: ゴール側に寄せて少し短く (10〜120までに短縮)
+    svg += f'<rect x="135" y="10" width="80" height="110" {style} />'
+    # フリースローサークル: 位置を120に移動
+    svg += f'<circle cx="175" cy="120" r="40" {style} />'
+    # 3Pライン: 下方向(センターライン側)へシフトし、サークルと離す
+    svg += f'<path d="M 30 10 A 150 150 0 0 0 320 10" {style} transform="translate(0, 45)" />'
     # ゴール
     svg += f'<line x1="150" y1="35" x2="200" y2="35" stroke="black" stroke-width="4" />'
     svg += f'<circle cx="175" cy="50" r="12" stroke="red" stroke-width="3" fill="none" />'
 
     # --- 下半分のライン ---
-    # ペイントエリア
-    svg += f'<rect x="135" y="360" width="80" height="150" {style} />'
-    # フリースローサークル
-    svg += f'<circle cx="175" cy="360" r="40" {style} />'
-    # 3Pライン
-    svg += f'<path d="M 30 510 A 150 150 0 0 1 320 510" {style} />'
+    # ペイントエリア: ゴール側に寄せて短く (410〜510)
+    svg += f'<rect x="135" y="410" width="80" height="100" {style} />'
+    # フリースローサークル: 位置を400に移動
+    svg += f'<circle cx="175" cy="400" r="40" {style} />'
+    # 3Pライン: 上方向(センターライン側)へシフト
+    svg += f'<path d="M 30 510 A 150 150 0 0 1 320 510" {style} transform="translate(0, -45)" />'
     # ゴール
     svg += f'<line x1="150" y1="485" x2="200" y2="485" stroke="black" stroke-width="4" />'
     svg += f'<circle cx="175" cy="470" r="12" stroke="red" stroke-width="3" fill="none" />'
@@ -63,7 +61,7 @@ def draw_perfect_court():
     for name, p in pos.items():
         if name.startswith("R"): color, label_c = "red", "white"
         elif name.startswith("B"): color, label_c = "blue", "white"
-        else: color, label_c = "yellow", "black" # ボールを見やすく黄色に
+        else: color, label_c = "yellow", "black"
         
         r = 8 if name == "Ball" else 13
         stroke = "black" if name == "Ball" else "white"
