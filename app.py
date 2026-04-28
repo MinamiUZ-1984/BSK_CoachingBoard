@@ -20,56 +20,51 @@ with col1:
 with col2:
     st.session_state.positions[target][1] = st.slider("前後 (Y)", 0, 520, st.session_state.positions[target][1])
 
-# --- 3. 完璧な線対称を描画するSVG関数 ---
+# --- 3. 完全線対称を描画するSVG関数 ---
 def draw_perfect_court():
     pos = st.session_state.positions
     c_orange = "#FF8C00"
     c_white = "white"
     
-    # 基準数値の設定
-    WIDTH = 350
-    HEIGHT = 520
-    CENTER_X = WIDTH / 2
-    CENTER_Y = HEIGHT / 2
-    COURT_W = 330
-    COURT_H = 500
+    WIDTH, HEIGHT = 350, 520
+    CENTER_X, CENTER_Y = WIDTH / 2, HEIGHT / 2
     
     svg = f'<svg width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}" xmlns="http://www.w3.org/2000/svg">'
     svg += f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{c_orange}" />'
     style = f'fill="none" stroke="{c_white}" stroke-width="3"'
     
     # センターライン・外枠・センターサークル
-    svg += f'<rect x="10" y="10" width="{COURT_W}" height="{COURT_H}" {style} />'
+    svg += f'<rect x="10" y="10" width="330" height="500" {style} />'
     svg += f'<line x1="10" y1="{CENTER_Y}" x2="340" y2="{CENTER_Y}" {style} />'
     svg += f'<circle cx="{CENTER_X}" cy="{CENTER_Y}" r="40" {style} />'
 
-    # 上下反転して描画するためのパーツ定義
-    # y=0を基準にパーツを作り、あとで上下に配置する
     def create_half_court(is_top):
-        # Y座標の向きとオフセットを計算
-        # 上ならエンドラインは10、下なら510
         offset_y = 10 if is_top else 510
         direction = 1 if is_top else -1
         
         h_svg = ""
-        # ペイントエリア (幅80, 高さ110)
+        # ペイントエリア (高さを110に固定)
         p_y = offset_y if is_top else offset_y - 110
         h_svg += f'<rect x="135" y="{p_y}" width="80" height="110" {style} />'
         
-        # フリースローサークル (中心はエンドラインから110)
+        # フリースローサークル
         fs_cy = offset_y + (110 * direction)
         h_svg += f'<circle cx="{CENTER_X}" cy="{fs_cy}" r="40" {style} />'
         
-        # 3Pライン
-        # 直線部分 (長さ90)
-        line_end_y = offset_y + (90 * direction)
+        # --- 3Pラインの位置調整 ---
+        # センターサークルに被らないよう、直線の長さを「90」から「50」に短縮
+        line_len = 50
+        line_end_y = offset_y + (line_len * direction)
+        
+        # 垂直な直線部分
         h_svg += f'<line x1="30" y1="{offset_y}" x2="30" y2="{line_end_y}" {style} />'
         h_svg += f'<line x1="320" y1="{offset_y}" x2="320" y2="{line_end_y}" {style} />'
-        # 円弧部分 (半径145)
+        
+        # 円弧部分 (半径145を維持しつつ、接続点を浅くしたことで全体がゴール側へシフト)
         sweep = 0 if is_top else 1
         h_svg += f'<path d="M 30 {line_end_y} A 145 145 0 0 {sweep} 320 {line_end_y}" {style} />'
         
-        # ゴール (エンドラインから40の位置)
+        # ゴール
         g_y = offset_y + (40 * direction)
         board_y = offset_y + (25 * direction)
         h_svg += f'<line x1="150" y1="{board_y}" x2="200" y2="{board_y}" stroke="black" stroke-width="4" />'
@@ -77,11 +72,10 @@ def draw_perfect_court():
         
         return h_svg
 
-    # 上下をそれぞれ描画
     svg += create_half_court(is_top=True)
     svg += create_half_court(is_top=False)
 
-    # --- 選手とボール ---
+    # 選手とボール
     for name, p in pos.items():
         if name.startswith("R"): color, label_c = "red", "white"
         elif name.startswith("B"): color, label_c = "blue", "white"
