@@ -7,35 +7,53 @@ st.set_page_config(page_title="バスケ作戦盤 Pro", layout="centered")
 
 st.title("🏀 バスケ作戦盤 Pro")
 
-# --- 1. コート画像の生成（オレンジ一色） ---
-def create_court_image():
-    # スマホ画面に合わせたサイズ
+# --- 1. コート画像の生成（透明な背景に白線だけを描く） ---
+def create_transparent_court_lines():
     width, height = 350, 520
-    # 指定されたきれいなオレンジ色（#FF8C00）で画像を作成
-    img = Image.new("RGB", (width, height), "#FF8C00") 
-    # 描画オブジェクト (ImageDraw) は作成しない（何も描かないため）
+    # "RGBA"を使って、完全に透明なシート (0, 0, 0, 0) を作ります
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0)) 
+    draw = ImageDraw.Draw(img)
     
-    # ラインなどは描画せず、そのままオレンジ色の画像を返す
+    line_color = "white"
+    w = 3
+    
+    # 外枠
+    draw.rectangle([10, 10, width-10, height-10], outline=line_color, width=w)
+    
+    # センターライン・サークル
+    draw.line([10, height/2, width-10, height/2], fill=line_color, width=w)
+    draw.ellipse([width/2 - 40, height/2 - 40, width/2 + 40, height/2 + 40], outline=line_color, width=w)
+    
+    # 上半分
+    draw.rectangle([width/2 - 60, 10, width/2 + 60, 150], outline=line_color, width=w)
+    draw.arc([width/2 - 40, 110, width/2 + 40, 190], 0, 180, fill=line_color, width=w)
+    draw.arc([20, -50, width-20, 220], 0, 180, fill=line_color, width=w)
+    draw.line([width/2 - 25, 25, width/2 + 25, 25], fill=line_color, width=4)
+    draw.ellipse([width/2 - 12, 25, width/2 + 12, 49], outline=line_color, width=w)
+    
+    # 下半分
+    draw.rectangle([width/2 - 60, height-150, width/2 + 60, height-10], outline=line_color, width=w)
+    draw.arc([width/2 - 40, height-190, width/2 + 40, height-110], 180, 360, fill=line_color, width=w)
+    draw.arc([20, height-220, width-20, height+50], 180, 360, fill=line_color, width=w)
+    draw.line([width/2 - 25, height-25, width/2 + 25, height-25], fill=line_color, width=4)
+    draw.ellipse([width/2 - 12, height-49, width/2 + 12, height-25], outline=line_color, width=w)
+
     return img
 
 # --- 2. 選手とボールの初期位置データ ---
-# これにより、起動時に最初からモノが配置されます
 initial_objects = {
     "version": "4.4.0",
     "objects": [
-        # 赤チーム (5人)
         {"type": "circle", "left": 50,  "top": 150, "radius": 12, "fill": "red", "label": "R1"},
         {"type": "circle", "left": 120, "top": 150, "radius": 12, "fill": "red", "label": "R2"},
         {"type": "circle", "left": 190, "top": 150, "radius": 12, "fill": "red", "label": "R3"},
         {"type": "circle", "left": 260, "top": 150, "radius": 12, "fill": "red", "label": "R4"},
         {"type": "circle", "left": 310, "top": 150, "radius": 12, "fill": "red", "label": "R5"},
-        # 青チーム (5人)
         {"type": "circle", "left": 50,  "top": 370, "radius": 12, "fill": "blue", "label": "B1"},
         {"type": "circle", "left": 120, "top": 370, "radius": 12, "fill": "blue", "label": "B2"},
         {"type": "circle", "left": 190, "top": 370, "radius": 12, "fill": "blue", "label": "B3"},
         {"type": "circle", "left": 260, "top": 370, "radius": 12, "fill": "blue", "label": "B4"},
         {"type": "circle", "left": 310, "top": 370, "radius": 12, "fill": "blue", "label": "B5"},
-        # ボール (背景のオレンジと同化しないように黒のフチドリをつけています)
         {"type": "circle", "left": 175, "top": 260, "radius": 8,  "fill": "orange", "stroke": "black", "strokeWidth": 2}
     ]
 }
@@ -46,30 +64,25 @@ col1, col2, col3 = st.columns(3)
 with col1:
     mode = st.radio("モード切替", ("動かす", "書く"), horizontal=True)
 with col2:
-    color = st.color_picker("ペンの色", "#FFFFFF") # 初期色は白
+    color = st.color_picker("ペンの色", "#FFFFFF") 
 with col3:
     if st.button("リセット"):
         st.rerun()
 
-# モードの変換
 drawing_mode = "transform" if mode == "動かす" else "freedraw"
 
 # --- 4. キャンバス実行 ---
-# 背景画像として、さきほど生成した「オレンジ一色」のコート画像をセット
-bg_image = create_court_image()
-
 canvas_result = st_canvas(
-    fill_color="rgba(255, 165, 0, 0.3)",  # circleで描いた時の塗りつぶし色
+    fill_color="rgba(255, 165, 0, 0.3)",
     stroke_width=3,
     stroke_color=color,
-    background_image=bg_image,          # ここでオレンジ画像を適用！
-    initial_drawing=initial_objects,    # 選手とボールの初期配置
+    background_color="#FF8C00",       # ← ダークモードに負けない強制オレンジ指定！
+    background_image=create_transparent_court_lines(), # 透明な上に白線を描いた画像を乗せる
+    initial_drawing=initial_objects,
     update_streamlit=True,
     height=520,
     width=350,
     drawing_mode=drawing_mode,
-    # キーを新しくしてキャッシュをリセット
-    key="canvas_one_color_orange",
+    key="canvas_orange_fixed",
 )
-
 st.caption("※「動かす」モードで選手やボールをドラッグ、「書く」モードで線を引けます。")
