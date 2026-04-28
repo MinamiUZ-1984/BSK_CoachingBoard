@@ -10,7 +10,7 @@ st.title("🏀 バスケ作戦盤 Pro")
 # --- 1. コート画像の生成（オレンジ背景・白線・全マーキング） ---
 def create_court_image():
     width, height = 350, 520
-    # コートの色をきれいなオレンジ色に設定
+    # コートの色をきれいなオレンジ色（#FF8C00）に設定
     img = Image.new("RGB", (width, height), "#FF8C00") 
     draw = ImageDraw.Draw(img)
     
@@ -94,7 +94,8 @@ canvas_result = st_canvas(
     height=520,
     width=350,
     drawing_mode=drawing_mode,
-    key="canvas_pro_v2",
+    # ↓ここを「canvas_pro_v3」に変更して強制リセットをかけます
+    key="canvas_pro_v3",
 )
 
 st.caption("※「動かす」モードで選手やボールをドラッグ、「書く」モードで線を引けます。")
