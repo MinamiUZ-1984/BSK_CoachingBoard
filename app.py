@@ -19,7 +19,7 @@ st.markdown("""
 
 st.title("🏀 バスケ作戦盤 Pro")
 
-# --- 2. 選手・ボールの初期配置（黄金の10人＋1） ---
+# --- 2. 選手・ボールの初期配置 ---
 if "positions" not in st.session_state:
     st.session_state.positions = {
         "R1": [175, 185], "R2": [70, 140], "R3": [280, 140], "R4": [35, 50], "R5": [315, 50],
@@ -27,10 +27,9 @@ if "positions" not in st.session_state:
         "Ball": [175, 210]
     }
 
-# 表示範囲の切り替え
 view_range = st.radio("表示範囲", ["フル", "上半面", "下半面"], horizontal=True)
 
-# --- 3. お絵かき＆ドラッグ機能付きSVGエンジン ---
+# --- 3. 完璧な鏡合わせコート描画関数 ---
 def draw_interactive_canvas(view):
     c_orange = "#FF8C00"
     c_white = "white"
@@ -39,6 +38,9 @@ def draw_interactive_canvas(view):
     if view == "上半面": v_box, h_val = "0 0 350 260", 410
     elif view == "下半面": v_box, h_val = "0 260 350 260", 410
     else: v_box, h_val = "0 0 350 520", 610
+
+    # 共通スタイル
+    line_s = f'fill="none" stroke="{c_white}" stroke-width="3"'
 
     svg_html = f"""
     <div id="wrapper" style="width: 100%; max-width: 390px; margin: 0 auto; user-select: none;">
@@ -52,24 +54,20 @@ def draw_interactive_canvas(view):
         <svg id="court-svg" width="100%" viewBox="{v_box}" xmlns="http://www.w3.org/2000/svg" 
              style="display: block; touch-action: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); background: {c_orange};">
             
-            <g fill="none" stroke="{c_white}" stroke-width="3" pointer-events="none">
-                <rect x="10" y="10" width="330" height="500" />
-                <line x1="10" y1="260" x2="340" y2="260" />
-                <circle cx="175" cy="260" r="40" />
-                <rect x="135" y="10" width="80" height="110" />
-                <circle cx="175" cy="120" r="40" />
-                <line x1="30" y1="10" x2="30" y2="25" /><line x1="320" y1="10" x2="320" y2="25" />
-                <path d="M 30 25 A 145 145 0 0 0 320 25" />
-                <rect x="135" y="410" width="80" height="110" />
-                <circle cx="175" cy="400" r="40" />
-                <line x1="30" y1="510" x2="30" y2="495" /><line x1="320" y1="510" x2="320" y2="495" />
-                <path d="M 30 495 A 145 145 0 0 1 320 495" />
+            <rect x="10" y="10" width="330" height="500" {line_s} pointer-events="none" />
+            <line x1="10" y1="260" x2="340" y2="260" {line_s} pointer-events="none" />
+            <circle cx="175" cy="260" r="40" {line_s} pointer-events="none" />
+
+            <g pointer-events="none">
+                <rect x="120" y="10" width="110" height="110" {line_s} /> <circle cx="175" cy="120" r="40" {line_s} /> <line x1="30" y1="10" x2="30" y2="25" {line_s} /> <line x1="320" y1="10" x2="320" y2="25" {line_s} />
+                <path d="M 30 25 A 145 145 0 0 0 320 25" {line_s} /> <line x1="150" y1="35" x2="200" y2="35" stroke="black" stroke-width="4" /> <circle cx="175" cy="50" r="12" stroke="red" stroke-width="3" fill="none" /> <rect x="120" y="400" width="110" height="110" {line_s} />
+                <circle cx="175" cy="400" r="40" {line_s} />
+                <line x1="30" y1="510" x2="30" y2="495" {line_s} />
+                <line x1="320" y1="510" x2="320" y2="495" {line_s} />
+                <path d="M 30 495 A 145 145 0 0 1 320 495" {line_s} />
+                <line x1="150" y1="485" x2="200" y2="485" stroke="black" stroke-width="4" />
+                <circle cx="175" cy="470" r="12" stroke="red" stroke-width="3" fill="none" />
             </g>
-            <g stroke-width="4" stroke="black" pointer-events="none">
-                <line x1="150" y1="35" x2="200" y2="35" /><line x1="150" y1="485" x2="200" y2="485" />
-            </g>
-            <circle cx="175" cy="50" r="12" stroke="red" stroke-width="3" fill="none" pointer-events="none" />
-            <circle cx="175" cy="470" r="12" stroke="red" stroke-width="3" fill="none" pointer-events="none" />
 
             <g id="draw-layer" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></g>
 
@@ -83,23 +81,16 @@ def draw_interactive_canvas(view):
     </div>
 
     <script>
+        // (JavaScript部分は前回同様：モード切替, Undo, Redo, Drag処理を完備)
         const svg = document.getElementById('court-svg');
         const drawLayer = document.getElementById('draw-layer');
         const modeBtn = document.getElementById('modeBtn');
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
         const clearBtn = document.getElementById('clearBtn');
+        let isDrawingMode = false; let isDrawing = false; let currentPath = null;
+        let paths = []; let redoStack = []; let selectedElement = null; let offset = {{ x: 0, y: 0 }};
 
-        let isDrawingMode = false;
-        let isDrawing = false;
-        let currentPath = null;
-        let paths = []; // Undo用
-        let redoStack = []; // Redo用
-        
-        let selectedElement = null;
-        let offset = {{ x: 0, y: 0 }};
-
-        // モード切替
         modeBtn.addEventListener('click', () => {{
             isDrawingMode = !isDrawingMode;
             modeBtn.innerText = isDrawingMode ? "✏️ 描く" : "🖐️ 移動";
@@ -112,36 +103,25 @@ def draw_interactive_canvas(view):
             return {{ x: (evt.clientX - CTM.e) / CTM.a, y: (evt.clientY - CTM.f) / CTM.d }};
         }}
 
-        // イベント登録
-        svg.addEventListener('mousedown', start);
-        svg.addEventListener('mousemove', move);
-        svg.addEventListener('mouseup', end);
-        svg.addEventListener('touchstart', start, {{passive: false}});
-        svg.addEventListener('touchmove', move, {{passive: false}});
-        svg.addEventListener('touchend', end);
+        svg.addEventListener('mousedown', start); svg.addEventListener('mousemove', move); svg.addEventListener('mouseup', end);
+        svg.addEventListener('touchstart', start, {{passive: false}}); svg.addEventListener('touchmove', move, {{passive: false}}); svg.addEventListener('touchend', end);
 
         function start(evt) {{
             const pos = getMousePosition(evt);
             if (isDrawingMode) {{
-                // 描画開始
-                isDrawing = true;
-                currentPath = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+                isDrawing = true; currentPath = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
                 currentPath.setAttribute("points", `${{pos.x}},${{pos.y}}`);
-                drawLayer.appendChild(currentPath);
-                redoStack = []; // 新しく描いたらRedoスタックをクリア
+                drawLayer.appendChild(currentPath); redoStack = [];
             }} else {{
-                // 移動開始
                 const target = evt.target.closest('.draggable');
                 if (target) {{
                     selectedElement = target;
                     const translate = selectedElement.transform.baseVal.getItem(0);
-                    offset.x = pos.x - translate.matrix.e;
-                    offset.y = pos.y - translate.matrix.f;
+                    offset.x = pos.x - translate.matrix.e; offset.y = pos.y - translate.matrix.f;
                 }}
             }}
             if (evt.type === 'touchstart') evt.preventDefault();
         }}
-
         function move(evt) {{
             const pos = getMousePosition(evt);
             if (isDrawingMode && isDrawing) {{
@@ -152,39 +132,10 @@ def draw_interactive_canvas(view):
             }}
             if (evt.touches) evt.preventDefault();
         }}
-
-        function end() {{
-            if (isDrawing) {{
-                paths.push(currentPath);
-                isDrawing = false;
-            }}
-            selectedElement = null;
-        }}
-
-        // ↩️ 戻る
-        undoBtn.addEventListener('click', () => {{
-            if (paths.length > 0) {{
-                const lastPath = paths.pop();
-                redoStack.push(lastPath);
-                drawLayer.removeChild(lastPath);
-            }}
-        }});
-
-        // ↪️ 進む
-        redoBtn.addEventListener('click', () => {{
-            if (redoStack.length > 0) {{
-                const path = redoStack.pop();
-                paths.push(path);
-                drawLayer.appendChild(path);
-            }}
-        }});
-
-        // 🗑️ 全消し
-        clearBtn.addEventListener('click', () => {{
-            drawLayer.innerHTML = "";
-            paths = [];
-            redoStack = [];
-        }});
+        function end() {{ if (isDrawing) paths.push(currentPath); isDrawing = false; selectedElement = null; }}
+        undoBtn.addEventListener('click', () => {{ if (paths.length > 0) {{ const last = paths.pop(); redoStack.push(last); drawLayer.removeChild(last); }} }});
+        redoBtn.addEventListener('click', () => {{ if (redoStack.length > 0) {{ const path = redoStack.pop(); paths.push(path); drawLayer.appendChild(path); }} }});
+        clearBtn.addEventListener('click', () => {{ drawLayer.innerHTML = ""; paths = []; redoStack = []; }});
     </script>
     """
     return svg_html
@@ -192,6 +143,6 @@ def draw_interactive_canvas(view):
 # --- 4. 表示 ---
 st.components.v1.html(draw_interactive_canvas(view_range), height=650)
 
-if st.button("全リセット（選手配置も戻す）"):
+if st.button("全リセット（配置も戻す）"):
     st.session_state.clear()
     st.rerun()
