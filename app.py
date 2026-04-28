@@ -1,24 +1,16 @@
 import streamlit as st
 
-# ページ設定
+# 1. ページ設定
 st.set_page_config(page_title="バスケ作戦盤 Pro", layout="centered")
 
-# --- iPhoneの画面幅を使い切るためのCSS魔法 ---
+# --- iPhone最適化CSS ---
 st.markdown("""
     <style>
-    /* メインコンテンツの余白を極限まで削る */
     .main .block-container {
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
         padding-top: 1rem !important;
-        max-width: 100%;
     }
-    /* タイトルの文字サイズを少し調整して場所を稼ぐ */
-    h1 {
-        font-size: 1.8rem !important;
-        text-align: center;
-    }
-    /* コンポーネントを囲むiframeの横幅を強制100%に */
     iframe {
         width: 100% !important;
         border: none;
@@ -28,85 +20,132 @@ st.markdown("""
 
 st.title("🏀 バスケ作戦盤 Pro")
 
-# --- 1. 位置記憶（完璧なレイアウトのまま） ---
-if "positions" not in st.session_state:
-    st.session_state.positions = {
-        "R1": [175, 150], "R2": [60, 200], "R3": [290, 200], "R4": [100, 280], "R5": [250, 280],
-        "B1": [175, 370], "B2": [60, 320], "B3": [290, 320], "B4": [100, 240], "B5": [250, 240],
-        "Ball": [175, 260]
-    }
-
-# --- 2. 操作パネル（スマホで見やすいよう少しコンパクトに） ---
-st.write("### 🕹️ 配置設定")
-target = st.selectbox("動かす対象:", list(st.session_state.positions.keys()))
-col1, col2 = st.columns(2)
-with col1:
-    st.session_state.positions[target][0] = st.slider("左右 (X)", 0, 350, st.session_state.positions[target][0])
-with col2:
-    st.session_state.positions[target][1] = st.slider("前後 (Y)", 0, 520, st.session_state.positions[target][1])
-
-# --- 3. 完璧なコート（SVGレスポンシブ版） ---
-def draw_perfect_court():
-    pos = st.session_state.positions
+# --- 2. 完璧なコート + ドラッグ機能のJavaScript ---
+def draw_interactive_court():
+    # 線の色とコート色
     c_orange = "#FF8C00"
     c_white = "white"
     
-    # 黄金比を維持したまま、表示幅を100%に。最大幅をiPhoneに合わせる。
-    svg = f'<svg width="100%" height="auto" viewBox="0 0 350 520" xmlns="http://www.w3.org/2000/svg" style="max-width: 350px; display: block; margin: 0 auto; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">'
-    svg += f'<rect width="350" height="520" fill="{c_orange}" />'
-    style = f'fill="none" stroke="{c_white}" stroke-width="3"'
-    
-    # 外枠・センター
-    svg += f'<rect x="10" y="10" width="330" height="500" {style} />'
-    svg += f'<line x1="10" y1="260" x2="340" y2="260" {style} />'
-    svg += f'<circle cx="175" cy="260" r="40" {style} />'
+    # 初期の選手配置（あなたの「完璧なレイアウト」を継承）
+    players = [
+        {"id": "R1", "x": 175, "y": 150, "color": "red"},
+        {"id": "R2", "x": 60, "y": 200, "color": "red"},
+        {"id": "R3", "x": 290, "y": 200, "color": "red"},
+        {"id": "R4", "x": 100, "y": 280, "color": "red"},
+        {"id": "R5", "x": 250, "y": 280, "color": "red"},
+        {"id": "B1", "x": 175, "y": 370, "color": "blue"},
+        {"id": "B2", "x": 60, "y": 320, "color": "blue"},
+        {"id": "B3", "x": 290, "y": 320, "color": "blue"},
+        {"id": "B4", "x": 100, "y": 240, "color": "blue"},
+        {"id": "B5", "x": 250, "y": 240, "color": "blue"},
+        {"id": "Ball", "x": 175, "y": 260, "color": "yellow"}
+    ]
 
-    def create_half_court(is_top):
-        offset_y = 10 if is_top else 510
-        direction = 1 if is_top else -1
-        h_svg = ""
-        p_y = offset_y if is_top else offset_y - 110
-        h_svg += f'<rect x="135" y="{p_y}" width="80" height="110" {style} />'
-        fs_cy = offset_y + (110 * direction)
-        h_svg += f'<circle cx="175" cy="{fs_cy}" r="40" {style} />'
-        line_len = 15
-        line_end_y = offset_y + (line_len * direction)
-        h_svg += f'<line x1="30" y1="{offset_y}" x2="30" y2="{line_end_y}" {style} />'
-        h_svg += f'<line x1="320" y1="{offset_y}" x2="320" y2="{line_end_y}" {style} />'
-        sweep = 0 if is_top else 1
-        h_svg += f'<path d="M 30 {line_end_y} A 145 145 0 0 {sweep} 320 {line_end_y}" {style} />'
-        g_y = offset_y + (40 * direction)
-        board_y = offset_y + (25 * direction)
-        h_svg += f'<line x1="150" y1="{board_y}" x2="200" y2="{board_y}" stroke="black" stroke-width="4" />'
-        h_svg += f'<circle cx="175" cy="{g_y}" r="12" stroke="red" stroke-width="3" fill="none" />'
-        return h_svg
+    # SVG本体とドラッグを制御するJavaScript
+    svg_html = f"""
+    <svg id="court" width="100%" height="auto" viewBox="0 0 350 520" xmlns="http://www.w3.org/2000/svg" 
+         style="max-width: 350px; display: block; margin: 0 auto; touch-action: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+        
+        <rect width="350" height="520" fill="{c_orange}" />
+        <g fill="none" stroke="{c_white}" stroke-width="3">
+            <rect x="10" y="10" width="330" height="500" />
+            <line x1="10" y1="260" x2="340" y2="260" />
+            <circle cx="175" cy="260" r="40" />
+            
+            <rect x="135" y="10" width="80" height="110" />
+            <circle cx="175" cy="120" r="40" />
+            <path d="M 30 25 A 145 145 0 0 0 320 25" transform="translate(0, 45)" />
+            <line x1="30" y1="10" x2="30" y2="70" />
+            <line x1="320" y1="10" x2="320" y2="70" />
+            
+            <rect x="135" y="410" width="80" height="110" />
+            <circle cx="175" cy="400" r="40" />
+            <path d="M 30 495 A 145 145 0 0 1 320 495" transform="translate(0, -45)" />
+            <line x1="30" y1="510" x2="30" y2="450" />
+            <line x1="320" y1="510" x2="320" y2="450" />
+        </g>
+        
+        <line x1="150" y1="35" x2="200" y2="35" stroke="black" stroke-width="4" />
+        <circle cx="175" cy="50" r="12" stroke="red" stroke-width="3" fill="none" />
+        <line x1="150" y1="485" x2="200" y2="485" stroke="black" stroke-width="4" />
+        <circle cx="175" cy="470" r="12" stroke="red" stroke-width="3" fill="none" />
 
-    svg += create_half_court(is_top=True)
-    svg += create_half_court(is_top=False)
+        { "".join([f'''
+        <g class="draggable" id="{p['id']}" transform="translate({p['x']},{p['y']})" style="cursor: move;">
+            <circle r="{"8" if p['id']=="Ball" else "14"}" fill="{p['color']}" stroke="{"black" if p['id']=="Ball" else "white"}" stroke-width="2" />
+            <text dy=".3em" font-size="10" text-anchor="middle" fill="{"black" if p['id']=="Ball" else "white"}" font-family="Arial" font-weight="bold" pointer-events="none">
+                {"B" if p['id']=="Ball" else p['id']}
+            </text>
+        </g>
+        ''' for p in players]) }
 
-    for name, p in pos.items():
-        if name.startswith("R"): color, label_c = "red", "white"
-        elif name.startswith("B"): color, label_c = "blue", "white"
-        else: color, label_c = "yellow", "black"
-        r = 8 if name == "Ball" else 13
-        stroke = "black" if name == "Ball" else "white"
-        svg += f'<circle cx="{p[0]}" cy="{p[1]}" r="{r}" fill="{color}" stroke="{stroke}" stroke-width="2" />'
-        label = "B" if name == "Ball" else name
-        svg += f'<text x="{p[0]}" y="{p[1]+4}" font-size="10" text-anchor="middle" fill="{label_c}" font-family="Arial" font-weight="bold">{label}</text>'
+        <script>
+            const svg = document.getElementById('court');
+            let selectedElement = null;
+            let offset = {{ x: 0, y: 0 }};
 
-    svg += '</svg>'
-    return svg
+            svg.addEventListener('mousedown', startDrag);
+            svg.addEventListener('mousemove', drag);
+            svg.addEventListener('mouseup', endDrag);
+            svg.addEventListener('touchstart', startDrag, {{passive: false}});
+            svg.addEventListener('touchmove', drag, {{passive: false}});
+            svg.addEventListener('touchend', endDrag);
 
-# --- 4. 表示実行 ---
-st.write("---")
-# 中央寄せするためのコンテナ
+            function getMousePosition(evt) {{
+                const CTM = svg.getScreenCTM();
+                if (evt.touches) {{ evt = evt.touches[0]; }}
+                return {{
+                    x: (evt.clientX - CTM.e) / CTM.a,
+                    y: (evt.clientY - CTM.f) / CTM.d
+                }};
+            }}
+
+            function startDrag(evt) {{
+                const target = evt.target.closest('.draggable');
+                if (target) {{
+                    selectedElement = target;
+                    const pos = getMousePosition(evt);
+                    const transforms = selectedElement.transform.baseVal;
+                    if (transforms.length === 0 || transforms.getItem(0).type !== SVGTransform.SVG_TRANSFORM_TRANSLATE) {{
+                        selectedElement.setAttribute('transform', 'translate(0,0)');
+                    }}
+                    const translate = transforms.getItem(0);
+                    offset.x = pos.x - translate.matrix.e;
+                    offset.y = pos.y - translate.matrix.f;
+                    if (evt.type === 'touchstart') evt.preventDefault();
+                }}
+            }}
+
+            function drag(evt) {{
+                if (selectedElement) {{
+                    const pos = getMousePosition(evt);
+                    selectedElement.setAttribute('transform', `translate(${{pos.x - offset.x}}, ${{pos.y - offset.y}})`);
+                    if (evt.type === 'touchmove') evt.preventDefault();
+                }}
+            }}
+
+            function endDrag(evt) {{
+                selectedElement = null;
+            }}
+        </script>
+    </svg>
+    """
+    return svg_html
+
+# --- 3. 画面表示 ---
+st.write("選手やボールを指で触って動かしてみてください。")
+
 st.components.v1.html(
     f"""
-    <div style="width: 100%; display: flex; justify-content: center; align-items: flex-start; background-color: transparent;">
-        {draw_perfect_court()}
+    <div style="width: 100%; display: flex; justify-content: center;">
+        {draw_interactive_court()}
     </div>
     """,
-    height=540
+    height=550
 )
 
-st.caption("iPhone 15用に表示を最適化しました。端まで綺麗に見えていますか？")
+st.write("---")
+if st.button("配置をリセット"):
+    st.rerun()
+
+st.caption("※iPhone 15のタッチ操作に対応しています。")
