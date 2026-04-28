@@ -7,26 +7,32 @@ st.set_page_config(page_title="バスケ作戦盤 Pro", layout="centered")
 
 st.title("🏀 バスケ作戦盤 Pro")
 
-# --- 1. コート画像の生成 ---
+# --- 1. コート画像の生成（座標エラー修正済み） ---
 def create_court_image():
     width, height = 350, 520
     img = Image.new("RGB", (width, height), "#dfbb85")
     draw = ImageDraw.Draw(img)
-    line_color, w = "white", 3
+    line_color = "white"
+    w = 3
+    
     # 外枠
     draw.rectangle([10, 10, width-10, height-10], outline=line_color, width=w)
+    
     # センターライン・サークル
     draw.line([10, height/2, width-10, height/2], fill=line_color, width=w)
     draw.ellipse([width/2 - 40, height/2 - 40, width/2 + 40, height/2 + 40], outline=line_color, width=w)
-    # ゴールエリア等（上下）
-    for y, is_top in [(10, True), (height-10, False)]:
-        offset = 110 if is_top else -110
-        draw.rectangle([width/2-45, y, width/2+45, y+offset], outline=line_color, width=w)
-        draw.line([width/2-25, y+(15 if is_top else -15), width/2+25, y+(15 if is_top else -15)], fill="black", width=4)
+    
+    # 上半分のコート
+    draw.rectangle([width/2 - 45, 10, width/2 + 45, 120], outline=line_color, width=w)
+    draw.line([width/2 - 25, 25, width/2 + 25, 25], fill="black", width=4) # バックボード
+    
+    # 下半分のコート（ここがエラーの原因でした。y座標の大小を修正）
+    draw.rectangle([width/2 - 45, height-120, width/2 + 45, height-10], outline=line_color, width=w)
+    draw.line([width/2 - 25, height-25, width/2 + 25, height-25], fill="black", width=4) # バックボード
+
     return img
 
-# --- 2. 選手とボールの初期位置データ (JSON形式) ---
-# これにより、起動時に最初からモノが配置されます
+# --- 2. 選手とボールの初期位置データ ---
 initial_objects = {
     "version": "4.4.0",
     "objects": [
@@ -67,7 +73,7 @@ canvas_result = st_canvas(
     stroke_width=3,
     stroke_color=color,
     background_image=create_court_image(),
-    initial_drawing=initial_objects, # ここで初期配置を読み込み！
+    initial_drawing=initial_objects,
     update_streamlit=True,
     height=520,
     width=350,
