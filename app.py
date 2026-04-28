@@ -6,8 +6,8 @@ st.title("🏀 バスケ作戦盤 Pro")
 # --- 1. 選手とボールの位置記憶 ---
 if "positions" not in st.session_state:
     st.session_state.positions = {
-        "R1": [175, 150], "R2": [50, 200], "R3": [300, 200], "R4": [100, 260], "R5": [250, 260],
-        "B1": [175, 370], "B2": [50, 320], "B3": [300, 320], "B4": [100, 260], "B5": [250, 260],
+        "R1": [175, 100], "R2": [60, 150], "R3": [290, 150], "R4": [100, 220], "R5": [250, 220],
+        "B1": [175, 420], "B2": [60, 370], "B3": [290, 370], "B4": [100, 300], "B5": [250, 300],
         "Ball": [175, 260]
     }
 
@@ -20,42 +20,66 @@ with col1:
 with col2:
     st.session_state.positions[target][1] = st.slider("前後 (Y)", 0, 520, st.session_state.positions[target][1])
 
-# --- 3. コートを描画するSVG関数 (レイアウト修正版) ---
+# --- 3. 完璧な線対称を描画するSVG関数 ---
 def draw_perfect_court():
     pos = st.session_state.positions
     c_orange = "#FF8C00"
     c_white = "white"
     
-    svg = f'<svg width="350" height="520" viewBox="0 0 350 520" xmlns="http://www.w3.org/2000/svg">'
-    svg += f'<rect width="350" height="520" fill="{c_orange}" />'
+    # 基準数値の設定
+    WIDTH = 350
+    HEIGHT = 520
+    CENTER_X = WIDTH / 2
+    CENTER_Y = HEIGHT / 2
+    COURT_W = 330
+    COURT_H = 500
+    
+    svg = f'<svg width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}" xmlns="http://www.w3.org/2000/svg">'
+    svg += f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{c_orange}" />'
     style = f'fill="none" stroke="{c_white}" stroke-width="3"'
     
-    # 基本ライン
-    svg += f'<rect x="10" y="10" width="330" height="500" {style} />'
-    svg += f'<line x1="10" y1="260" x2="340" y2="260" {style} />'
-    svg += f'<circle cx="175" cy="260" r="40" {style} />'
+    # センターライン・外枠・センターサークル
+    svg += f'<rect x="10" y="10" width="{COURT_W}" height="{COURT_H}" {style} />'
+    svg += f'<line x1="10" y1="{CENTER_Y}" x2="340" y2="{CENTER_Y}" {style} />'
+    svg += f'<circle cx="{CENTER_X}" cy="{CENTER_Y}" r="40" {style} />'
 
-    # --- 上半分のライン ---
-    # ペイントエリア: ゴール側に寄せて少し短く (10〜120までに短縮)
-    svg += f'<rect x="135" y="10" width="80" height="110" {style} />'
-    # フリースローサークル: 位置を120に移動
-    svg += f'<circle cx="175" cy="120" r="40" {style} />'
-    # 3Pライン: 下方向(センターライン側)へシフトし、サークルと離す
-    svg += f'<path d="M 30 10 A 150 150 0 0 0 320 10" {style} transform="translate(0, 45)" />'
-    # ゴール
-    svg += f'<line x1="150" y1="35" x2="200" y2="35" stroke="black" stroke-width="4" />'
-    svg += f'<circle cx="175" cy="50" r="12" stroke="red" stroke-width="3" fill="none" />'
+    # 上下反転して描画するためのパーツ定義
+    # y=0を基準にパーツを作り、あとで上下に配置する
+    def create_half_court(is_top):
+        # Y座標の向きとオフセットを計算
+        # 上ならエンドラインは10、下なら510
+        offset_y = 10 if is_top else 510
+        direction = 1 if is_top else -1
+        
+        h_svg = ""
+        # ペイントエリア (幅80, 高さ110)
+        p_y = offset_y if is_top else offset_y - 110
+        h_svg += f'<rect x="135" y="{p_y}" width="80" height="110" {style} />'
+        
+        # フリースローサークル (中心はエンドラインから110)
+        fs_cy = offset_y + (110 * direction)
+        h_svg += f'<circle cx="{CENTER_X}" cy="{fs_cy}" r="40" {style} />'
+        
+        # 3Pライン
+        # 直線部分 (長さ90)
+        line_end_y = offset_y + (90 * direction)
+        h_svg += f'<line x1="30" y1="{offset_y}" x2="30" y2="{line_end_y}" {style} />'
+        h_svg += f'<line x1="320" y1="{offset_y}" x2="320" y2="{line_end_y}" {style} />'
+        # 円弧部分 (半径145)
+        sweep = 0 if is_top else 1
+        h_svg += f'<path d="M 30 {line_end_y} A 145 145 0 0 {sweep} 320 {line_end_y}" {style} />'
+        
+        # ゴール (エンドラインから40の位置)
+        g_y = offset_y + (40 * direction)
+        board_y = offset_y + (25 * direction)
+        h_svg += f'<line x1="150" y1="{board_y}" x2="200" y2="{board_y}" stroke="black" stroke-width="4" />'
+        h_svg += f'<circle cx="{CENTER_X}" cy="{g_y}" r="12" stroke="red" stroke-width="3" fill="none" />'
+        
+        return h_svg
 
-    # --- 下半分のライン ---
-    # ペイントエリア: ゴール側に寄せて短く (410〜510)
-    svg += f'<rect x="135" y="410" width="80" height="100" {style} />'
-    # フリースローサークル: 位置を400に移動
-    svg += f'<circle cx="175" cy="400" r="40" {style} />'
-    # 3Pライン: 上方向(センターライン側)へシフト
-    svg += f'<path d="M 30 510 A 150 150 0 0 1 320 510" {style} transform="translate(0, -45)" />'
-    # ゴール
-    svg += f'<line x1="150" y1="485" x2="200" y2="485" stroke="black" stroke-width="4" />'
-    svg += f'<circle cx="175" cy="470" r="12" stroke="red" stroke-width="3" fill="none" />'
+    # 上下をそれぞれ描画
+    svg += create_half_court(is_top=True)
+    svg += create_half_court(is_top=False)
 
     # --- 選手とボール ---
     for name, p in pos.items():
@@ -65,7 +89,6 @@ def draw_perfect_court():
         
         r = 8 if name == "Ball" else 13
         stroke = "black" if name == "Ball" else "white"
-        
         svg += f'<circle cx="{p[0]}" cy="{p[1]}" r="{r}" fill="{color}" stroke="{stroke}" stroke-width="2" />'
         label = "B" if name == "Ball" else name
         svg += f'<text x="{p[0]}" y="{p[1]+4}" font-size="10" text-anchor="middle" fill="{label_c}" font-family="Arial" font-weight="bold">{label}</text>'
